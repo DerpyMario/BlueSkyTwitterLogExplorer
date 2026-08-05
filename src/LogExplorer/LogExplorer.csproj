@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <RootNamespace>LogExplorer</RootNamespace>
+    <AssemblyName>logexplorer</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MoonSharp" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ship the Lua filter script next to the binary so it is found when the
+         app is not run from the repository root. -->
+    <Content Include="../../scripts/filters.lua" Link="scripts/filters.lua" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,13 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+
+# Put your extracted DiscordLog exports here (not committed)
+data/
+
+# Export command output
+export.json
+export.csv
+export.md

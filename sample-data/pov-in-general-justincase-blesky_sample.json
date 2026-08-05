@@ -1,0 +1,71 @@
+{
+  "id": "1500484252460908594",
+  "serverName": "Sample Server",
+  "channelName": "pov-in-general-justincase-blesky",
+  "messageCount": 2,
+  "fromDate": "2026-07-01T00:00:00.000Z",
+  "toDate": "2026-07-02T00:00:00.000Z",
+  "messages": [
+    {
+      "type": 0,
+      "content": "",
+      "timestamp": "2026-07-01T09:37:45.719000+00:00",
+      "embeds": [],
+      "flags": 32768,
+      "components": [
+        { "type": 10, "id": 1, "content": "**demo.bsky.social** Just Posted On Bluesky" },
+        {
+          "type": 17,
+          "id": 2,
+          "components": [
+            {
+              "type": 9,
+              "id": 3,
+              "components": [
+                { "type": 10, "id": 4, "content": "### [**Demo User (@demo.bsky.social)**](https://bsky.app/profile/demo.bsky.social/post/3aaaaaaaaaa2a)" },
+                { "type": 10, "id": 5, "content": "Finished the key art for our visual novel today #IndieGame #Art" }
+              ]
+            },
+            { "type": 10, "id": 6, "content": "-# <:bsky:1303506117032280087>  Bluesky  •  <t:1782898800:f>" }
+          ]
+        }
+      ],
+      "id": "1521760617218838101",
+      "channel_id": "1500484252460908594",
+      "author": { "username": "SkyCord", "bot": true }
+    },
+    {
+      "type": 0,
+      "content": "",
+      "timestamp": "2026-07-01T18:05:12.000000+00:00",
+      "embeds": [],
+      "flags": 32768,
+      "components": [
+        { "type": 10, "id": 1, "content": "**demo.bsky.social** Just Posted On Bluesky" },
+        {
+          "type": 17,
+          "id": 2,
+          "components": [
+            {
+              "type": 9,
+              "id": 3,
+              "components": [
+                { "type": 10, "id": 4, "content": "### <:bsky_repost:1380198177050726542> - [**Casting Call (@casting.example.com)**](https://bsky.app/profile/did:plc:example/post/3bbbbbbbbbb2b#repostId=3ccccccccccc2c)" },
+                { "type": 10, "id": 5, "content": "Open auditions for our animated short! Details below #VoiceActing #Animation" }
+              ]
+            },
+            { "type": 14, "id": 6, "spacing": 2, "divider": true },
+            { "type": 10, "id": 7, "content": "**Quoting**\n[**Studio Lead (@lead.example.com)**](https://bsky.app/profile/lead.example.com)" },
+            { "type": 10, "id": 8, "content": "We are so back. Production resumes this fall." },
+            { "type": 10, "id": 9, "content": "-# Reposted By demo.bsky.social" },
+            { "type": 10, "id": 10, "content": "-# <:bsky:1303506117032280087>  Bluesky  •  <t:1782929112:f>" }
+          ]
+        }
+      ],
+      "id": "1521760617218838102",
+      "channel_id": "1500484252460908594",
+      "author": { "username": "SkyCord", "bot": true }
+    }
+  ],
+  "tokenEstimate": 400
+}

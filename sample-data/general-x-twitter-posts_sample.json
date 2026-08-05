@@ -1,0 +1,74 @@
+{
+  "id": "1500588660737966230",
+  "serverName": "Sample Server",
+  "channelName": "general-x-twitter-posts",
+  "messageCount": 3,
+  "fromDate": "2026-07-01T00:00:00.000Z",
+  "toDate": "2026-07-02T00:00:00.000Z",
+  "messages": [
+    {
+      "type": 0,
+      "content": "https://twitter.com/sample_seiyuu/status/1000000000000000001",
+      "timestamp": "2026-07-01T06:13:24.090000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/sample_seiyuu/status/1000000000000000001",
+          "description": "Cast announcement day! So excited to join this project 🎙️ #VoiceActor #Anime",
+          "color": 1942002,
+          "timestamp": "2026-07-01T06:12:27+00:00",
+          "author": {
+            "name": "Sample Seiyuu 🎙️ (@sample_seiyuu)",
+            "url": "https://twitter.com/sample_seiyuu/status/1000000000000000001"
+          }
+        }
+      ],
+      "id": "1521760617218838001",
+      "channel_id": "1500588660737966230",
+      "author": { "username": "TweetBot", "bot": true }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/retweeter_dev/status/1000000000000000002",
+      "timestamp": "2026-07-01T12:40:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/retweeter_dev/status/1000000000000000002",
+          "description": "Our indie game demo is live! Wishlist now 🕹️ #GameDev #IndieGame",
+          "color": 1942002,
+          "timestamp": "2026-07-01T09:20:52+00:00",
+          "author": {
+            "name": "Pixel Studio (@pixel_studio_jp)",
+            "url": "https://twitter.com/retweeter_dev/status/1000000000000000002"
+          }
+        }
+      ],
+      "id": "1521760617218838002",
+      "channel_id": "1500588660737966230",
+      "author": { "username": "TweetBot", "bot": true }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/sample_seiyuu/status/1000000000000000003",
+      "timestamp": "2026-07-01T22:15:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/sample_seiyuu/status/1000000000000000003",
+          "description": "Late night ramen appreciation post 🍜",
+          "color": 1942002,
+          "timestamp": "2026-07-01T22:14:10+00:00",
+          "author": {
+            "name": "Sample Seiyuu 🎙️ (@sample_seiyuu)",
+            "url": "https://twitter.com/sample_seiyuu/status/1000000000000000003"
+          }
+        }
+      ],
+      "id": "1521760617218838003",
+      "channel_id": "1500588660737966230",
+      "author": { "username": "TweetBot", "bot": true }
+    }
+  ],
+  "tokenEstimate": 500
+}
