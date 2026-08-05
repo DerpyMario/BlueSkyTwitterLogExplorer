@@ -16,10 +16,13 @@ public static class Commands
                 ExportFormat.DiscordChatExporterJson => "DiscordChatExporter",
                 _ => $"{f.Format} (listed only)",
             };
-            Console.WriteLine($"{format,-24} {f.Platform,-9} {range,-33} {f.MessageCount,6} {f.ParsedPosts,6}  {f.Name}"
+            var name = f.Container is null ? f.Name : $"{f.Container} :: {f.Name}";
+            var merged = f.MergedCount > 0 ? $"  [+{f.MergedCount} duplicate cop{(f.MergedCount == 1 ? "y" : "ies")} merged]" : "";
+            Console.WriteLine($"{format,-24} {f.Platform,-9} {range,-33} {f.MessageCount,6} {f.ParsedPosts,6}  {name}{merged}"
                               + (f.Error is null ? "" : $"  [error: {f.Error}]"));
         }
-        Console.WriteLine($"\n{archive.Files.Count} files, {archive.Posts.Count} unique posts after de-duplication");
+        Console.WriteLine($"\n{archive.Files.Count} files ({archive.MergedFileCount} duplicate copies merged), " +
+                          $"{archive.Posts.Count} unique posts after de-duplication");
         if (archive.Posts.Count > 0)
             Console.WriteLine($"overall coverage: {archive.Posts[0].Timestamp:yyyy-MM-dd HH:mm} → {archive.Posts[^1].Timestamp:yyyy-MM-dd HH:mm} UTC");
         return 0;

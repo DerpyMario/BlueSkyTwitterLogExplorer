@@ -1,16 +1,28 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using SharpCompress.Archives;
 
 namespace LogExplorer;
 
 /// <summary>
-/// Loads every export file under a directory (recursively), parses the JSON ones and
-/// de-duplicates posts across overlapping export ranges and duplicate formats.
+/// Loads every export under a directory (recursively), including files inside .7z and .zip
+/// archives — read as streams straight out of the archive, never extracted to disk. Parses the
+/// JSON exports, merges duplicate copies of the same export file, and de-duplicates posts
+/// across overlapping export ranges and formats.
 /// </summary>
 public sealed partial class LogArchive
 {
     public List<ExportFile> Files { get; } = new();
     public List<Post> Posts { get; } = new();
+
+    /// <summary>Total duplicate file copies merged away (same name+size, or same channel+dates).</summary>
+    public int MergedFileCount => Files.Sum(f => f.MergedCount);
+
+    private readonly HashSet<string> _postKeys = new();
+    private readonly Dictionary<string, ExportFile> _byNameAndSize = new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly string[] LooseExtensions = { ".json", ".csv", ".txt", ".md", ".html", ".htm" };
+    private static readonly string[] ArchiveExtensions = { ".7z", ".zip" };
 
     [GeneratedRegex(@"(\d{4}-\d{2}-\d{2}T\d{2}_\d{2}_\d{2}\.\d+Z)_to_(\d{4}-\d{2}-\d{2}T\d{2}_\d{2}_\d{2}\.\d+Z)")]
     private static partial Regex FileNameRange();
@@ -21,52 +33,137 @@ public sealed partial class LogArchive
     public static LogArchive Load(string directory)
     {
         var archive = new LogArchive();
-        var dedupe = new HashSet<string>();
         var files = Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
             .OrderBy(f => f, StringComparer.Ordinal);
 
         foreach (var path in files)
         {
             var ext = Path.GetExtension(path).ToLowerInvariant();
-            var file = new ExportFile
+            if (ArchiveExtensions.Contains(ext))
             {
-                Path = path,
-                Format = ext switch
-                {
-                    ".json" => ExportFormat.Unknown, // refined below
-                    ".csv" => ExportFormat.Csv,
-                    ".txt" => ExportFormat.Txt,
-                    ".md" => ExportFormat.Markdown,
-                    ".html" or ".htm" => ExportFormat.Html,
-                    _ => ExportFormat.Unknown,
-                },
-            };
-            if (ext is not (".json" or ".csv" or ".txt" or ".md" or ".html" or ".htm")) continue;
-
-            GuessRangeFromName(file);
-            file.Platform = GuessPlatform(file.Name);
-
-            if (ext == ".json")
-            {
-                try
-                {
-                    archive.ParseJson(file, dedupe);
-                }
-                catch (Exception ex)
-                {
-                    file.Error = ex.Message;
-                }
+                archive.ScanCompressedArchive(path);
             }
-            archive.Files.Add(file);
+            else if (LooseExtensions.Contains(ext))
+            {
+                archive.AddFile(path, container: null, new FileInfo(path).Length,
+                    openStream: () => File.OpenRead(path));
+            }
         }
 
         archive.Posts.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
         return archive;
     }
 
-    private void ParseJson(ExportFile file, HashSet<string> dedupe)
+    /// <summary>Enumerates a .7z/.zip and parses supported entries from their streams (no extraction).</summary>
+    private void ScanCompressedArchive(string archivePath)
     {
-        using var stream = File.OpenRead(file.Path);
+        var containerName = Path.GetFileName(archivePath);
+        try
+        {
+            using var stream = File.OpenRead(archivePath);
+            using var archive = ArchiveFactory.OpenArchive(stream);
+            if (archive.IsSolid || archive.Type == SharpCompress.Common.ArchiveType.SevenZip)
+            {
+                // Forward-only reader: decompresses solid .7z blocks sequentially instead of
+                // re-decompressing per entry.
+                using var reader = archive.ExtractAllEntries();
+                while (reader.MoveToNextEntry())
+                {
+                    var entry = reader.Entry;
+                    if (entry.IsDirectory || entry.Key is null) continue;
+                    if (!LooseExtensions.Contains(Path.GetExtension(entry.Key).ToLowerInvariant())) continue;
+
+                    // The reader is forward-only, so the entry must be consumed here and once.
+                    using var entryStream = reader.OpenEntryStream();
+                    AddFile($"{containerName}::{entry.Key}", containerName, entry.Size, () => entryStream);
+                }
+            }
+            else
+            {
+                // Zip supports random access per entry.
+                foreach (var entry in archive.Entries)
+                {
+                    if (entry.IsDirectory || entry.Key is null) continue;
+                    if (!LooseExtensions.Contains(Path.GetExtension(entry.Key).ToLowerInvariant())) continue;
+                    AddFile($"{containerName}::{entry.Key}", containerName, entry.Size, entry.OpenEntryStream);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Files.Add(new ExportFile
+            {
+                Path = archivePath,
+                Container = containerName,
+                Format = ExportFormat.Unknown,
+                Error = $"cannot read archive: {ex.Message}",
+            });
+        }
+    }
+
+    private void AddFile(string path, string? container, long size, Func<Stream> openStream)
+    {
+        var file = new ExportFile { Path = path, Container = container, Size = size };
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        file.Format = ext switch
+        {
+            ".json" => ExportFormat.Unknown, // refined during parse
+            ".csv" => ExportFormat.Csv,
+            ".txt" => ExportFormat.Txt,
+            ".md" => ExportFormat.Markdown,
+            ".html" or ".htm" => ExportFormat.Html,
+            _ => ExportFormat.Unknown,
+        };
+
+        // Merge rule 1: an identical copy (same file name and uncompressed size) was already
+        // loaded — e.g. the same export sitting in several archives. Skip it entirely.
+        var identityKey = $"{file.Name}|{size}";
+        if (_byNameAndSize.TryGetValue(identityKey, out var original))
+        {
+            original.MergedCount++;
+            return;
+        }
+
+        GuessRangeFromName(file);
+        file.Platform = GuessPlatform(file.Name);
+
+        if (ext == ".json")
+        {
+            try
+            {
+                using var stream = openStream();
+                ParseJson(file, stream);
+            }
+            catch (Exception ex)
+            {
+                file.Error = ex.Message;
+            }
+
+            // Merge rule 2: same channel and same export dates as an already-parsed file, and
+            // every post in it was already known — a re-export of the same range under a
+            // different name. Fold it into the earlier file instead of listing it.
+            if (file.Error is null && file.ParsedPosts == 0 && file.MessageCount > 0)
+            {
+                var twin = Files.FirstOrDefault(f =>
+                    f.ParsedPosts > 0
+                    && f.Channel == file.Channel
+                    && f.RangeFrom == file.RangeFrom
+                    && f.RangeTo == file.RangeTo);
+                if (twin is not null)
+                {
+                    twin.MergedCount++;
+                    _byNameAndSize[identityKey] = twin;
+                    return;
+                }
+            }
+        }
+
+        _byNameAndSize[identityKey] = file;
+        Files.Add(file);
+    }
+
+    private void ParseJson(ExportFile file, Stream stream)
+    {
         using var doc = JsonDocument.Parse(stream);
         var root = doc.RootElement;
         if (root.ValueKind != JsonValueKind.Object) { file.Error = "not an export file"; return; }
@@ -114,7 +211,7 @@ public sealed partial class LogArchive
 
             foreach (var post in ParseMessage(message, msgTs, file.Name, channel))
             {
-                if (!dedupe.Add(post.DedupeKey)) continue;
+                if (!_postKeys.Add(post.DedupeKey)) continue;
                 Posts.Add(post);
                 file.ParsedPosts++;
             }

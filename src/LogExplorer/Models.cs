@@ -79,11 +79,31 @@ public sealed class UserStat
     public Dictionary<string, int> CategoryCounts { get; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
-/// <summary>One file found in the export directory.</summary>
+/// <summary>One file found in the export directory — loose on disk or inside a .7z/.zip archive.</summary>
 public sealed class ExportFile
 {
     public string Path { get; init; } = "";
-    public string Name => System.IO.Path.GetFileName(Path);
+
+    public string Name
+    {
+        get
+        {
+            var p = Path.Replace('\\', '/');
+            var sep = p.LastIndexOf("::", StringComparison.Ordinal);
+            if (sep >= 0) p = p[(sep + 2)..];
+            return System.IO.Path.GetFileName(p);
+        }
+    }
+
+    /// <summary>Name of the .7z/.zip the file lives in, or null for loose files.</summary>
+    public string? Container { get; init; }
+
+    /// <summary>Uncompressed size in bytes (used to detect identical duplicate copies).</summary>
+    public long Size { get; init; }
+
+    /// <summary>How many identical/same-date duplicate copies were merged into this entry.</summary>
+    public int MergedCount { get; set; }
+
     public ExportFormat Format { get; set; }
     public string Channel { get; set; } = "";
     public Platform Platform { get; set; } = Platform.Unknown;

@@ -1,0 +1,148 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="LogExplorer.Gui.MainWindow"
+        Title="BlueSky/Twitter Log Explorer"
+        Width="1280" Height="840"
+        WindowStartupLocation="CenterScreen">
+
+  <DockPanel Margin="8">
+
+    <!-- Data source row -->
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="6" Margin="0,0,0,6">
+      <TextBlock VerticalAlignment="Center" Text="Data folder:" />
+      <TextBox x:Name="DataDirBox" Width="420" Watermark="folder with .7z / .zip / extracted DiscordLog exports" />
+      <Button x:Name="BrowseButton" Content="Browse…" Click="OnBrowse" />
+      <Button x:Name="LoadButton" Content="Load" Click="OnLoad" />
+      <TextBlock x:Name="LoadInfo" VerticalAlignment="Center" Opacity="0.75" />
+    </StackPanel>
+
+    <!-- Filter row -->
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+      <WrapPanel.Styles>
+        <Style Selector="WrapPanel > :is(Control)">
+          <Setter Property="Margin" Value="0,0,6,6" />
+        </Style>
+      </WrapPanel.Styles>
+      <ComboBox x:Name="PlatformBox" Width="110" SelectedIndex="0">
+        <ComboBoxItem Content="All platforms" />
+        <ComboBoxItem Content="Twitter" />
+        <ComboBoxItem Content="Bluesky" />
+      </ComboBox>
+      <ComboBox x:Name="CategoryBox" Width="160" SelectedIndex="0" />
+      <TextBox x:Name="TagBox" Width="150" Watermark="#hashtags (a,b)" />
+      <TextBox x:Name="UserBox" Width="170" Watermark="@users (a,b)" />
+      <CalendarDatePicker x:Name="FromDate" Width="140" Watermark="from date" />
+      <CalendarDatePicker x:Name="ToDate" Width="140" Watermark="to date" />
+      <TextBox x:Name="BetweenBox" Width="120" Watermark="06:00-12:00" />
+      <TextBox x:Name="SearchBox" Width="170" Watermark="text contains…" />
+      <TextBox x:Name="WhereBox" Width="220" Watermark="Lua: post.is_repost and …" />
+      <CheckBox x:Name="NoRepostsBox" Content="No reposts" />
+      <CheckBox x:Name="OnlyRepostsBox" Content="Only reposts" />
+      <Button x:Name="ApplyButton" Content="Apply filters" Click="OnApply" />
+      <Button Content="Reset" Click="OnReset" />
+    </WrapPanel>
+
+    <!-- Status / export bar -->
+    <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+        <TextBlock VerticalAlignment="Center" Text="Export filtered:" Opacity="0.75" />
+        <Button Content="JSON" Click="OnExportJson" />
+        <Button Content="CSV" Click="OnExportCsv" />
+        <Button Content="Markdown" Click="OnExportMd" />
+      </StackPanel>
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Opacity="0.75" />
+    </DockPanel>
+
+    <TabControl x:Name="Tabs">
+
+      <TabItem Header="Posts">
+        <ListBox x:Name="PostsList">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="0,3">
+                <TextBlock Text="{Binding Header}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="12,1,0,0" />
+                <TextBlock Text="{Binding Quoted}" TextWrapping="Wrap" Margin="24,1,0,0"
+                           Opacity="0.8" FontStyle="Italic" IsVisible="{Binding HasQuote}" />
+                <SelectableTextBlock Text="{Binding Url}" Margin="12,1,0,0" Opacity="0.6" FontSize="12" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+
+      <TabItem Header="Users">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Margin="4,2" Opacity="0.6"
+                     Text="Double-click a user to see their posts" />
+          <ListBox x:Name="UsersList" DoubleTapped="OnUserDoubleTapped">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,1">
+                  <TextBlock Text="{Binding Platform}" Width="70" Opacity="0.7" />
+                  <TextBlock Text="{Binding Posts}" Width="55" TextAlignment="Right" Margin="0,0,10,0" />
+                  <TextBlock Text="{Binding Reposts}" Width="55" TextAlignment="Right" Margin="0,0,10,0" Opacity="0.7" />
+                  <TextBlock Text="{Binding Handle}" Width="280" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Name}" Width="240" />
+                  <TextBlock Text="{Binding Seen}" Width="170" Opacity="0.7" />
+                  <TextBlock Text="{Binding TopTags}" Opacity="0.7" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+
+      <TabItem Header="Tags">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Margin="4,2" Opacity="0.6"
+                     Text="Double-click a hashtag to filter posts by it" />
+          <ListBox x:Name="TagsList" DoubleTapped="OnTagDoubleTapped">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" Margin="0,1">
+                  <TextBlock Text="{Binding Count}" Width="70" TextAlignment="Right" Margin="0,0,12,0" />
+                  <TextBlock Text="{Binding Tag}" Width="300" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Categories}" Opacity="0.7" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+
+      <TabItem Header="Categories">
+        <ListBox x:Name="CategoriesList">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="0,4">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Tags}" TextWrapping="Wrap" Opacity="0.75" Margin="12,1,0,0" />
+                <TextBlock Text="{Binding TopUsers}" TextWrapping="Wrap" Opacity="0.6" Margin="12,1,0,0" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+
+      <TabItem Header="Files">
+        <ListBox x:Name="FilesList">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Margin="0,1">
+                <TextBlock Text="{Binding Format}" Width="165" Opacity="0.8" />
+                <TextBlock Text="{Binding Platform}" Width="70" Opacity="0.7" />
+                <TextBlock Text="{Binding Range}" Width="250" Opacity="0.8" />
+                <TextBlock Text="{Binding Messages}" Width="60" TextAlignment="Right" Margin="0,0,10,0" />
+                <TextBlock Text="{Binding Posts}" Width="60" TextAlignment="Right" Margin="0,0,10,0" />
+                <TextBlock Text="{Binding Name}" TextWrapping="NoWrap" />
+                <TextBlock Text="{Binding Notes}" Opacity="0.6" Margin="8,0,0,0" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </TabItem>
+
+    </TabControl>
+  </DockPanel>
+</Window>

@@ -4,7 +4,8 @@ obj/
 .vs/
 .idea/
 
-# Put your extracted DiscordLog exports here (not committed)
+# Put your DiscordLog exports here (.7z/.zip or extracted) — not committed
+BlueSkyX/
 data/
 
 # Export command output

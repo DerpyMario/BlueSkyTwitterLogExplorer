@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\src\LogExplorer\LogExplorer.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\sample-data\**" Link="sample-data\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -30,10 +30,13 @@ public static class Cli
         var command = args[0];
         var opts = ParseArgs(args.Skip(1));
 
-        var dataDir = opts.GetValueOrDefault("data") ?? Environment.GetEnvironmentVariable("LOGEXPLORER_DATA") ?? "data";
+        var dataDir = opts.GetValueOrDefault("data")
+            ?? Environment.GetEnvironmentVariable("LOGEXPLORER_DATA")
+            ?? (Directory.Exists("BlueSkyX") ? "BlueSkyX" : "data");
         if (!Directory.Exists(dataDir))
             throw new DirectoryNotFoundException(
-                $"data directory '{dataDir}' not found — pass --data <dir> pointing at the extracted DiscordLog exports");
+                $"data directory '{dataDir}' not found — put your DiscordLog exports (.7z/.zip archives " +
+                "or extracted files) in ./BlueSkyX, or pass --data <dir>");
 
         var filtersPath = opts.GetValueOrDefault("filters")
             ?? (File.Exists(DefaultFilters) ? DefaultFilters
@@ -226,7 +229,8 @@ public static class Cli
           interactive    REPL that accepts the commands above
 
         common options:
-          --data <dir>        export directory (default ./data, or $LOGEXPLORER_DATA)
+          --data <dir>        export directory (default ./BlueSkyX, or $LOGEXPLORER_DATA);
+                              .7z and .zip archives inside are read directly, no extraction needed
           --filters <file>    Lua filter script (default scripts/filters.lua)
           --platform <p>      twitter | bluesky
           --user <a,b>        only these handles (author or reposter, exact match)

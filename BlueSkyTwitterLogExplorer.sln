@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{C0588BA2
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogExplorer.Tests", "tests\LogExplorer.Tests\LogExplorer.Tests.csproj", "{44DC390D-BBA8-4331-AE96-FEEA9381CDB8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogExplorer.Gui", "src\LogExplorer.Gui\LogExplorer.Gui.csproj", "{43F2DB2F-339B-4A4B-B4FC-884943FC4507}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,9 +30,14 @@ Global
 		{44DC390D-BBA8-4331-AE96-FEEA9381CDB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{44DC390D-BBA8-4331-AE96-FEEA9381CDB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{44DC390D-BBA8-4331-AE96-FEEA9381CDB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43F2DB2F-339B-4A4B-B4FC-884943FC4507}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43F2DB2F-339B-4A4B-B4FC-884943FC4507}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43F2DB2F-339B-4A4B-B4FC-884943FC4507}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43F2DB2F-339B-4A4B-B4FC-884943FC4507}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{4EFF140C-3C1A-4BFC-8416-C9EAAFA6FBA2} = {10D2A5EB-C92F-494B-A2BD-3E713259211E}
 		{44DC390D-BBA8-4331-AE96-FEEA9381CDB8} = {C0588BA2-D24A-44A0-8770-B941D8439D2D}
+		{43F2DB2F-339B-4A4B-B4FC-884943FC4507} = {10D2A5EB-C92F-494B-A2BD-3E713259211E}
 	EndGlobalSection
 EndGlobal
