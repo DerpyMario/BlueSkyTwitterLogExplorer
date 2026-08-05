@@ -1,0 +1,54 @@
+name: Build self-contained binaries
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: osx-arm64
+          - os: macos-latest
+            rid: osx-x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Test
+        run: dotnet test tests/LogExplorer.Tests -c Release
+
+      - name: Publish self-contained single-file app
+        run: >
+          dotnet publish src/LogExplorer -c Release -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o publish
+
+      - name: Add docs and sample data
+        shell: bash
+        run: cp -r README.md sample-data publish/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: logexplorer-${{ matrix.rid }}
+          path: publish
+          if-no-files-found: error

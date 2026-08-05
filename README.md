@@ -116,6 +116,18 @@ dotnet run --project src/LogExplorer -- posts --data data \
     --where "post.platform == 'bluesky' and post.quoted_handle ~= nil"
 ```
 
+## Prebuilt binaries (GitHub Actions)
+
+The **Build self-contained binaries** workflow (Actions tab → *Run workflow*, and on every
+push to `main`) runs the tests and publishes a fully self-contained single-file build —
+.NET runtime and MoonSharp included, nothing to install — for Linux x64, Windows x64,
+macOS arm64 and macOS x64. Each `logexplorer-<platform>` artifact contains the executable,
+`scripts/filters.lua`, the README and the sample data:
+
+```bash
+./logexplorer posts --data sample-data     # runs out of the unzipped artifact
+```
+
 ## Building & tests
 
 ```bash
