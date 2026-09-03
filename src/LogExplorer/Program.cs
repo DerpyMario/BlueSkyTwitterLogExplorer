@@ -49,26 +49,31 @@ public static class Cli
         var lua = new LuaFilterEngine(filtersPath);
         foreach (var post in archive.Posts)
             lua.AssignCategories(post);
+        var labels = LabelEngine.Build(archive.Posts, lua);
         Console.Error.WriteLine(
             $"loaded {archive.Files.Count} files, {archive.Posts.Count} unique posts " +
             $"({archive.Posts.Count(p => p.Platform == Platform.Twitter)} twitter, " +
             $"{archive.Posts.Count(p => p.Platform == Platform.Bluesky)} bluesky) — " +
-            $"filters: {Path.GetFileName(filtersPath)} (strict={lua.Strict})");
+            $"filters: {Path.GetFileName(filtersPath)} (strict={lua.Strict}) — " +
+            $"detected {labels.Labels.Count} labels across {labels.KindNames.Count} kinds");
 
-        return Dispatch(command, opts, archive, lua);
+        return Dispatch(command, opts, archive, lua, labels);
     }
 
-    private static int Dispatch(string command, Dictionary<string, string> opts, LogArchive archive, LuaFilterEngine lua)
+    private static int Dispatch(string command, Dictionary<string, string> opts, LogArchive archive,
+                                LuaFilterEngine lua, LabelEngine labels)
     {
         switch (command)
         {
             case "files": return Commands.Files(archive, opts);
-            case "users": return Commands.Users(archive, lua, opts);
-            case "posts": return Commands.Posts(archive, lua, opts);
-            case "tags": return Commands.Tags(archive, lua, opts);
-            case "categories": return Commands.Categories(archive, lua, opts);
-            case "export": return Commands.Export(archive, lua, opts);
-            case "interactive": return Interactive(archive, lua);
+            case "users": return Commands.Users(archive, lua, labels, opts);
+            case "posts": return Commands.Posts(archive, lua, labels, opts);
+            case "tags": return Commands.Tags(archive, lua, labels, opts);
+            case "categories": return Commands.Categories(archive, lua, labels, opts);
+            case "labels": return Commands.Labels(archive, lua, labels, opts);
+            case "kinds": return Commands.Kinds(archive, lua, labels, opts);
+            case "export": return Commands.Export(archive, lua, labels, opts);
+            case "interactive": return Interactive(archive, lua, labels);
             default:
                 Console.Error.WriteLine($"unknown command '{command}'");
                 PrintHelp();
@@ -76,7 +81,7 @@ public static class Cli
         }
     }
 
-    private static int Interactive(LogArchive archive, LuaFilterEngine lua)
+    private static int Interactive(LogArchive archive, LuaFilterEngine lua, LabelEngine labels)
     {
         Console.WriteLine("interactive explorer — type a command (e.g. 'users --top 20'), 'help' or 'quit'");
         while (true)
@@ -89,7 +94,7 @@ public static class Cli
             var parts = SplitCommandLine(line);
             try
             {
-                Dispatch(parts[0], ParseArgs(parts.Skip(1)), archive, lua);
+                Dispatch(parts[0], ParseArgs(parts.Skip(1)), archive, lua, labels);
             }
             catch (Exception ex)
             {
@@ -111,6 +116,8 @@ public static class Cli
         if (opts.TryGetValue("user", out var u)) o.Users = u.Split(',').Select(s => s.Trim()).ToList();
         if (opts.TryGetValue("tag", out var t)) o.Tags = t.Split(',').Select(s => s.Trim()).ToList();
         if (opts.TryGetValue("category", out var c)) o.Categories = c.Split(',').Select(s => s.Trim()).ToList();
+        if (opts.TryGetValue("label", out var lb)) o.Labels = lb.Split(',').Select(s => s.Trim()).ToList();
+        if (opts.TryGetValue("kind", out var kd)) o.Kinds = kd.Split(',').Select(s => s.Trim()).ToList();
         if (opts.TryGetValue("from", out var f)) o.From = ParseDateArg(f, endOfDay: false);
         if (opts.TryGetValue("to", out var to)) o.To = ParseDateArg(to, endOfDay: true);
         if (opts.TryGetValue("last", out var last)) ApplyLast(o, last, archive);
@@ -225,6 +232,9 @@ public static class Cli
           posts          list posts matching the filters
           tags           list hashtags with counts and the category they map to
           categories     show Lua-defined categories with post/user counts
+          labels         list subject names detected in the logs (games, shows, events, …)
+                         with the kind each was classified as and the evidence for it
+          kinds          summarise the detected kinds
           export         write filtered posts to a file (--out, --format json|csv|md)
           interactive    REPL that accepts the commands above
 
@@ -236,6 +246,10 @@ public static class Cli
           --user <a,b>        only these handles (author or reposter, exact match)
           --tag <a,b>         only posts with these hashtags (strictness from Lua options.strict)
           --category <a,b>    only posts in these Lua categories
+          --label <a,b>       only posts about these detected subjects
+                              ("Genshin Impact" or "genshinimpact" both work)
+          --kind <a,b>        only posts whose subjects are of these kinds
+                              (e.g. "Video game", "Anime" — names come from filters.lua)
           --from/--to <date>  date or date-time window, e.g. 2026-07-01 or 2026-07-01T12:30 (UTC)
           --last <n[dhm]>     window measured back from the newest post, e.g. --last 7d
           --between <t1-t2>   time-of-day window (UTC), e.g. 06:00-12:00 (may wrap midnight)
@@ -247,6 +261,7 @@ public static class Cli
         command-specific:
           users:  --sort posts|recent|handle   --top <n>   --find <substr>   --detail
           posts:  --full (untruncated text)    --sort old|new
+          labels: --sort posts|users|name|kind --top <n>   --find <substr>   --explain
           export: --out <path>   --format json|csv|md
         """);
     }

@@ -10,6 +10,7 @@ public sealed record PostRow(string Header, string Text, string Quoted, string U
 public sealed record UserRow(string Platform, string Handle, string Name, int Posts, int Reposts, string Seen, string TopTags);
 public sealed record TagRow(int Count, string Tag, string Categories, string RawTag);
 public sealed record CategoryRow(string Title, string Tags, string TopUsers);
+public sealed record LabelRow(int Posts, int Users, string Kind, string Name, string Seen, string Why, string Key);
 public sealed record FileRow(string Format, string Platform, string Range, int Messages, int Posts, string Name, string Notes);
 
 public partial class MainWindow : Window
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
 
     private LogArchive? _archive;
     private LuaFilterEngine? _lua;
+    private LabelEngine? _labels;
     private List<Post> _filtered = new();
     private bool _busy;
 
@@ -64,21 +66,30 @@ public partial class MainWindow : Window
         try
         {
             var filtersPath = FindFiltersScript();
-            var (archive, lua) = await Task.Run(() =>
+            var (archive, lua, labels) = await Task.Run(() =>
             {
                 var a = LogArchive.Load(dir);
                 var l = new LuaFilterEngine(filtersPath);
                 foreach (var post in a.Posts)
                     l.AssignCategories(post);
-                return (a, l);
+                var detected = LabelEngine.Build(a.Posts, l);
+                return (a, l, detected);
             });
 
             _archive = archive;
             _lua = lua;
+            _labels = labels;
             LoadInfo.Text =
                 $"{archive.Files.Count} files ({archive.MergedFileCount} duplicates merged) — " +
                 $"{archive.Posts.Count} posts ({archive.Posts.Count(p => p.Platform == Platform.Twitter)} tw / " +
-                $"{archive.Posts.Count(p => p.Platform == Platform.Bluesky)} bs)";
+                $"{archive.Posts.Count(p => p.Platform == Platform.Bluesky)} bs) — " +
+                $"{labels.Labels.Count} subjects detected";
+
+            KindBox.ItemsSource = new[] { "All kinds" }
+                .Concat(labels.Labels.Select(l => l.Kind).Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+            KindBox.SelectedIndex = 0;
 
             CategoryBox.ItemsSource =
                 new[] { "All categories" }
@@ -120,7 +131,8 @@ public partial class MainWindow : Window
     {
         PlatformBox.SelectedIndex = 0;
         if (CategoryBox.ItemCount > 0) CategoryBox.SelectedIndex = 0;
-        TagBox.Text = UserBox.Text = BetweenBox.Text = SearchBox.Text = WhereBox.Text = "";
+        if (KindBox.ItemCount > 0) KindBox.SelectedIndex = 0;
+        TagBox.Text = UserBox.Text = BetweenBox.Text = SearchBox.Text = WhereBox.Text = LabelBox.Text = "";
         FromDate.SelectedDate = ToDate.SelectedDate = null;
         NoRepostsBox.IsChecked = OnlyRepostsBox.IsChecked = false;
         ApplyFilters();
@@ -145,6 +157,10 @@ public partial class MainWindow : Window
             o.Users = UserBox.Text.Split(',').Select(u => u.Trim()).Where(u => u.Length > 0).ToList();
         if (CategoryBox.SelectedIndex > 0 && CategoryBox.SelectedItem is string cat)
             o.Categories = new List<string> { cat };
+        if (KindBox.SelectedIndex > 0 && KindBox.SelectedItem is string kind)
+            o.Kinds = new List<string> { kind };
+        if (!string.IsNullOrWhiteSpace(LabelBox.Text))
+            o.Labels = LabelBox.Text.Split(',').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
         if (FromDate.SelectedDate is { } from)
             o.From = new DateTimeOffset(DateTime.SpecifyKind(from.Date, DateTimeKind.Utc));
         if (ToDate.SelectedDate is { } to)
@@ -175,6 +191,7 @@ public partial class MainWindow : Window
             PopulatePostsTab();
             PopulateUsersTab();
             PopulateTagsTab();
+            PopulateLabelsTab();
             PopulateCategoriesTab();
         }
         catch (Exception ex)
@@ -191,9 +208,12 @@ public partial class MainWindow : Window
         {
             var repost = p.RepostedBy is null ? "" : $"  ⇄ reposted by @{p.RepostedBy}";
             var cats = p.Categories.Count > 0 ? $"  [{string.Join(", ", p.Categories)}]" : "";
+            var subjects = p.Labels.Count > 0
+                ? $"  {{{string.Join(", ", p.Labels)}{(p.Kinds.Count > 0 ? " · " + string.Join("/", p.Kinds) : "")}}}"
+                : "";
             var tag = p.Platform == LogExplorer.Platform.Twitter ? "🐦" : "🦋";
             return new PostRow(
-                $"{p.Timestamp:yyyy-MM-dd HH:mm} {tag} @{p.Handle} ({p.DisplayName}){repost}{cats}",
+                $"{p.Timestamp:yyyy-MM-dd HH:mm} {tag} @{p.Handle} ({p.DisplayName}){repost}{cats}{subjects}",
                 p.Text.Length > 0 ? p.Text : "(no text)",
                 p.QuotedHandle is null ? "" : $"↳ quoting @{p.QuotedHandle}: {p.QuotedText}",
                 p.Url,
@@ -233,6 +253,40 @@ public partial class MainWindow : Window
                     .Select(c => c.Name)),
                 kv.Key))
             .ToList();
+    }
+
+    private void PopulateLabelsTab()
+    {
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in _filtered)
+            foreach (var name in p.Labels)
+                counts[name] = counts.GetValueOrDefault(name) + 1;
+
+        LabelsList.ItemsSource = _labels!.Labels
+            .Where(l => counts.ContainsKey(l.Display))
+            .OrderByDescending(l => counts[l.Display])
+            .Select(l => new LabelRow(
+                counts[l.Display], l.UserCount,
+                (l.Inherited ? "~" : "") + l.Kind,
+                l.Display,
+                $"{l.FirstSeen:yyyy-MM-dd} → {l.LastSeen:yyyy-MM-dd}",
+                l.Inherited
+                    ? $"kind inherited from {string.Join(", ", l.Related.Take(3))}"
+                    : l.Kind == _labels.Options.UnknownName
+                        ? $"no vocabulary matched · spelled {string.Join(" ", l.Variants.Take(3))}"
+                        : $"{l.Confidence:P0} of the evidence: {string.Join(", ", l.Evidence)} · spelled {string.Join(" ", l.Variants.Take(3))}",
+                l.Key))
+            .ToList();
+    }
+
+    private void OnLabelDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (LabelsList.SelectedItem is LabelRow row)
+        {
+            LabelBox.Text = row.Name;
+            ApplyFilters();
+            Tabs.SelectedIndex = 0;
+        }
     }
 
     private void PopulateCategoriesTab()

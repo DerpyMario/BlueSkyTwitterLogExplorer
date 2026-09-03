@@ -19,6 +19,9 @@ explore them per user, per hashtag category and per date/time window:
   post appearing in overlapping exports is counted once.
 * **Every user indexed** — each Bluesky/Twitter author found in the logs, with post and
   repost counts, first/last seen dates, top hashtags and categories.
+* **Subjects detected by name, with no list of titles anywhere** — the explorer works out
+  which games, shows, events and so on the logs are about, and files each under a kind
+  ("Video game", "Anime", …). See [Subjects and kinds](#subjects-and-kinds) below.
 * **Strict hashtag filtering by category** — categories are defined in
   [`scripts/filters.lua`](scripts/filters.lua). In strict mode `#anime` matches the
   `anime` tag exactly and `#animeexpo` does not; loose mode allows prefix matching.
@@ -43,6 +46,8 @@ predicates to every tab:
 * **Users** — every Bluesky/Twitter user with post/repost counts, activity span and top
   hashtags; double-click a user to jump to their posts.
 * **Tags** — hashtag frequencies and their categories; double-click to filter by a tag.
+* **Subjects** — every detected subject with its kind and the evidence behind it;
+  double-click to filter by it. The *kind* dropdown and *subject* box filter every tab.
 * **Categories** — the Lua categories with post/user counts and top users.
 * **Files** — every export file (including ones inside archives) with format, date range
   and merge/duplicate info.
@@ -89,6 +94,8 @@ extraction needed.
 | `users` | Every Bluesky/Twitter user seen in the logs (`--sort posts\|recent\|handle`, `--top`, `--find`, `--detail`) |
 | `posts` | Posts matching the filters (`--full`, `--sort old\|new`) |
 | `tags` | Hashtags with counts and the categories they map to |
+| `labels` | Subjects detected in the logs with their kind (`--explain` shows why, `--sort posts\|users\|name\|kind`, `--top`, `--find`) |
+| `kinds` | Summary of the detected kinds and their most common subjects |
 | `categories` | The Lua categories with post counts, user counts and top users |
 | `export` | Write filtered posts to `json`, `csv` or `md` (`--out`, `--format`) |
 | `interactive` | REPL accepting all of the above |
@@ -98,12 +105,54 @@ extraction needed.
 ```
 --platform twitter|bluesky     --user handle1,handle2      (author or reposter)
 --tag anime,gamedev            --category VoiceActing      (from filters.lua)
+--label "Genshin Impact"       --kind "Video game"         (auto-detected subjects/kinds)
 --from 2026-07-01              --to 2026-07-15T12:00       (UTC; bare --to date = whole day)
 --last 7d|12h|30m              (measured back from the newest post in the data)
 --between 06:00-12:00          (time-of-day window, may wrap midnight)
 --contains "text"              --where "post.is_repost and #post.hashtags > 1"   (Lua!)
 --no-reposts / --only-reposts  --limit N
 ```
+
+## Subjects and kinds
+
+![subjects](docs/screenshot-subjects.png)
+
+Beyond the hand-written categories, the explorer figures out *what the logs are about* on its
+own. No title is written down anywhere in the code or the config, so a game or show that first
+appears in next month's export is picked up without anyone editing a list.
+
+1. **Names come from the data.** Hashtags that recur often enough become subjects, with their
+   spellings folded together (`#GenshinImpact`, `#genshinimpact`, `#Genshin_Impact` are one
+   subject) and read back as a name — `AstralVoyage` → "Astral Voyage". A hashtag that is
+   ordinary vocabulary (`#anime`, `#gamedev`) is a topic, not a title, so it never becomes a
+   subject.
+2. **Kinds come from how people talk.** `filters.lua` describes each kind with plain
+   vocabulary — "patchnotes", "wishlist" for a video game; "episode", "simulcast" for anime —
+   and a subject is filed under the kind whose vocabulary shows up in its posts. Words that
+   honestly belong to several kinds ("trailer", "chapter", "season") are listed under each of
+   them, so they cancel out and the telling words decide.
+3. **The explorer extends the vocabulary itself.** Once some subjects are confidently placed,
+   it learns which *other* words lean towards each kind and judges everything again. Subject
+   names and account handles are excluded from what can be learned, so it learns language
+   rather than agreeing with itself.
+4. **Evidence is weighed, not just counted.** Words that fire everywhere count for little; a
+   post from the subject's own account (`@AstralVoyage` posting about `#AstralVoyage`) counts
+   for a lot; a post with eight hashtags stapled to it counts for less per subject; and a
+   single ambiguous word never settles a kind on its own.
+5. **What is left over inherits.** A subject with no vocabulary of its own takes the kind of
+   the subjects it keeps appearing beside — a `~` in the listings marks those.
+
+`labels --explain` shows the reasoning for every subject:
+
+```
+   135     60   Video game        Genshin Impact             2022-07-15 → 2026-09-01
+              why: vocabulary in 56 % of its posts: traveler, version, dear, trailer
+              spellings: #GenshinImpact #genshinimpact #Genshinimpact
+              seen with: Sandrone, Columbina, 原神, Genshin Luna VIII, 원신
+```
+
+Every knob is in `filters.lua` — add or rename kinds, edit their vocabulary, change the
+thresholds, or take the final decision yourself in a `detect(label)` function.
 
 ## The Lua side (`scripts/filters.lua`)
 
@@ -138,6 +187,20 @@ end
 function categorize(post)      -- fallback for posts no category matched
     return nil
 end
+
+labels = {                     -- automatic subject detection (see above)
+    min_posts = 3,             -- how often a hashtag must appear to count as a subject
+    min_terms = 2,             -- how many different words must back a decision
+    learned_terms_per_kind = 40,
+    kinds = {
+        ["Video game"] = { "gameplay", "patchnotes", "wishlist", "gacha", "trailer" },
+        ["Anime"] = { "anime", "episode", "simulcast", "dubbed", "trailer" },
+        ["Event"] = { weight = 0.35, "convention", "booth", "artistalley" },
+    },
+    detect = function(label)   -- optional last word on any subject
+        return nil
+    end,
+}
 ```
 
 Ad-hoc Lua predicates also work straight from the CLI:

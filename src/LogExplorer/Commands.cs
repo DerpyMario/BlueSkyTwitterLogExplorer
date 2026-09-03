@@ -28,7 +28,7 @@ public static class Commands
         return 0;
     }
 
-    public static int Users(LogArchive archive, LuaFilterEngine lua, Dictionary<string, string> opts)
+    public static int Users(LogArchive archive, LuaFilterEngine lua, LabelEngine labels, Dictionary<string, string> opts)
     {
         var filter = Cli.BuildFilterOptions(opts, lua, archive);
         var posts = PostFilter.Apply(archive.Posts, filter, lua);
@@ -70,7 +70,7 @@ public static class Commands
         return 0;
     }
 
-    public static int Posts(LogArchive archive, LuaFilterEngine lua, Dictionary<string, string> opts)
+    public static int Posts(LogArchive archive, LuaFilterEngine lua, LabelEngine labels, Dictionary<string, string> opts)
     {
         var filter = Cli.BuildFilterOptions(opts, lua, archive);
         if (!opts.ContainsKey("limit") && !opts.ContainsKey("full")) filter.Limit = 50;
@@ -83,7 +83,10 @@ public static class Commands
             var text = full ? p.Text : Truncate(p.Text.Replace('\n', ' '), 120);
             var repost = p.RepostedBy is null ? "" : $" [rt by @{p.RepostedBy}]";
             var cats = p.Categories.Count > 0 ? $" [{string.Join(",", p.Categories)}]" : "";
-            Console.WriteLine($"{p.Timestamp:yyyy-MM-dd HH:mm} {PlatformTag(p.Platform)} @{p.Handle}{repost}{cats}");
+            var subjects = p.Labels.Count > 0
+                ? $" {{{string.Join(", ", p.Labels)}{(p.Kinds.Count > 0 ? " · " + string.Join("/", p.Kinds) : "")}}}"
+                : "";
+            Console.WriteLine($"{p.Timestamp:yyyy-MM-dd HH:mm} {PlatformTag(p.Platform)} @{p.Handle}{repost}{cats}{subjects}");
             Console.WriteLine($"    {text}");
             if (p.QuotedHandle is not null)
                 Console.WriteLine($"    ↳ quoting @{p.QuotedHandle}: {(full ? p.QuotedText : Truncate(p.QuotedText?.Replace('\n', ' ') ?? "", 100))}");
@@ -93,7 +96,7 @@ public static class Commands
         return 0;
     }
 
-    public static int Tags(LogArchive archive, LuaFilterEngine lua, Dictionary<string, string> opts)
+    public static int Tags(LogArchive archive, LuaFilterEngine lua, LabelEngine labels, Dictionary<string, string> opts)
     {
         var filter = Cli.BuildFilterOptions(opts, lua, archive);
         var posts = PostFilter.Apply(archive.Posts, filter, lua);
@@ -122,7 +125,7 @@ public static class Commands
         return 0;
     }
 
-    public static int Categories(LogArchive archive, LuaFilterEngine lua, Dictionary<string, string> opts)
+    public static int Categories(LogArchive archive, LuaFilterEngine lua, LabelEngine labels, Dictionary<string, string> opts)
     {
         var filter = Cli.BuildFilterOptions(opts, lua, archive);
         var posts = PostFilter.Apply(archive.Posts, filter, lua);
@@ -156,7 +159,92 @@ public static class Commands
         return 0;
     }
 
-    public static int Export(LogArchive archive, LuaFilterEngine lua, Dictionary<string, string> opts)
+    public static int Labels(LogArchive archive, LuaFilterEngine lua, LabelEngine labels, Dictionary<string, string> opts)
+    {
+        var filter = Cli.BuildFilterOptions(opts, lua, archive);
+        var posts = PostFilter.Apply(archive.Posts, filter, lua);
+
+        // Counts are recomputed over the filtered posts so labels respect --from/--kind/etc.
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in posts)
+            foreach (var name in p.Labels)
+                counts[name] = counts.GetValueOrDefault(name) + 1;
+
+        var rows = labels.Labels.Where(l => counts.ContainsKey(l.Display)).ToList();
+        if (opts.TryGetValue("find", out var find))
+            rows = rows.Where(l => l.Display.Contains(find, StringComparison.OrdinalIgnoreCase)
+                                   || l.Variants.Any(v => v.Contains(find, StringComparison.OrdinalIgnoreCase))).ToList();
+        if (opts.TryGetValue("kind", out var kindFilter))
+        {
+            var wanted = kindFilter.Split(',').Select(k => k.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            rows = rows.Where(l => wanted.Contains(l.Kind)).ToList();
+        }
+
+        var sort = opts.GetValueOrDefault("sort", "posts");
+        rows = sort switch
+        {
+            "posts" => rows.OrderByDescending(l => counts[l.Display]).ThenBy(l => l.Display).ToList(),
+            "users" => rows.OrderByDescending(l => l.UserCount).ThenBy(l => l.Display).ToList(),
+            "name" => rows.OrderBy(l => l.Display, StringComparer.OrdinalIgnoreCase).ToList(),
+            "kind" => rows.OrderBy(l => l.Kind, StringComparer.OrdinalIgnoreCase)
+                          .ThenByDescending(l => counts[l.Display]).ToList(),
+            _ => throw new ArgumentException($"unknown --sort '{sort}'"),
+        };
+
+        var top = opts.TryGetValue("top", out var t) ? int.Parse(t) : 60;
+        var explain = opts.ContainsKey("explain");
+
+        Console.WriteLine($"{"posts",6} {"users",6}  {"kind",-18} {"subject",-34} first seen → last seen");
+        foreach (var l in rows.Take(top))
+        {
+            var mark = l.Inherited ? "~" : " ";
+            Console.WriteLine($"{counts[l.Display],6} {l.UserCount,6}  {mark}{l.Kind,-17} {Truncate(l.Display, 34),-34} " +
+                              $"{l.FirstSeen:yyyy-MM-dd} → {l.LastSeen:yyyy-MM-dd}");
+            if (explain)
+            {
+                var how = l.Inherited
+                    ? $"inherited from related subjects ({l.Confidence:P0} agreement)"
+                    : l.Kind == labels.Options.UnknownName
+                        ? "no vocabulary matched"
+                        : $"vocabulary in {l.Confidence:P0} of its posts: {string.Join(", ", l.Evidence)}";
+                Console.WriteLine($"{"",14}why: {how}");
+                Console.WriteLine($"{"",14}spellings: {string.Join(" ", l.Variants.Take(6))}");
+                if (l.Related.Count > 0)
+                    Console.WriteLine($"{"",14}seen with: {string.Join(", ", l.Related)}");
+            }
+        }
+        Console.WriteLine($"\n{rows.Count} subjects in {posts.Count} matching posts " +
+                          $"({rows.Count(l => l.Kind == labels.Options.UnknownName)} unclassified, " +
+                          $"~ = kind inherited from related subjects)");
+        return 0;
+    }
+
+    public static int Kinds(LogArchive archive, LuaFilterEngine lua, LabelEngine labels, Dictionary<string, string> opts)
+    {
+        var filter = Cli.BuildFilterOptions(opts, lua, archive);
+        var posts = PostFilter.Apply(archive.Posts, filter, lua);
+
+        var postsPerKind = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in posts)
+            foreach (var kind in p.Kinds)
+                postsPerKind[kind] = postsPerKind.GetValueOrDefault(kind) + 1;
+
+        Console.WriteLine("kinds are named in filters.lua and matched by the vocabulary listed there,");
+        Console.WriteLine("never by a list of titles — new subjects are classified as they show up.\n");
+        Console.WriteLine($"{"posts",7} {"subjects",9}  {"kind",-20} most common subjects");
+
+        foreach (var kind in labels.Labels.Select(l => l.Kind).Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderByDescending(k => postsPerKind.GetValueOrDefault(k)))
+        {
+            var members = labels.Labels.Where(l => l.Kind.Equals(kind, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(l => l.PostCount).ToList();
+            var examples = string.Join(", ", members.Take(6).Select(l => l.Display));
+            Console.WriteLine($"{postsPerKind.GetValueOrDefault(kind),7} {members.Count,9}  {kind,-20} {Truncate(examples, 70)}");
+        }
+        return 0;
+    }
+
+    public static int Export(LogArchive archive, LuaFilterEngine lua, LabelEngine labels, Dictionary<string, string> opts)
     {
         var filter = Cli.BuildFilterOptions(opts, lua, archive);
         var posts = PostFilter.Apply(archive.Posts, filter, lua);

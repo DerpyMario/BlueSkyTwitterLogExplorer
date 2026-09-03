@@ -20,8 +20,12 @@ public sealed class LuaFilterEngine
     private readonly Script _script;
     private readonly DynValue? _excludeFn;
     private readonly DynValue? _categorizeFn;
+    private readonly DynValue? _detectLabelFn;
 
     public List<CategoryDef> Categories { get; } = new();
+
+    /// <summary>Settings driving automatic label discovery and kind detection.</summary>
+    public LabelOptions LabelOptions { get; } = new();
     public bool Strict { get; private set; } = true;
     public bool RequireCategory { get; private set; }
     public string UncategorizedName { get; private set; } = "Uncategorized";
@@ -79,6 +83,74 @@ public sealed class LuaFilterEngine
         if (exclude.Type == DataType.Function) _excludeFn = exclude;
         var categorize = _script.Globals.Get("categorize");
         if (categorize.Type == DataType.Function) _categorizeFn = categorize;
+
+        var labels = _script.Globals.Get("labels");
+        if (labels.Type == DataType.Table)
+        {
+            var t = labels.Table;
+            if (t.Get("min_posts").Type == DataType.Number) LabelOptions.MinPosts = (int)t.Get("min_posts").Number;
+            if (t.Get("min_confidence").Type == DataType.Number) LabelOptions.MinConfidence = t.Get("min_confidence").Number;
+            if (t.Get("min_margin").Type == DataType.Number) LabelOptions.MinMargin = t.Get("min_margin").Number;
+            if (t.Get("author_weight").Type == DataType.Number) LabelOptions.AuthorWeight = t.Get("author_weight").Number;
+            if (t.Get("min_terms").Type == DataType.Number) LabelOptions.MinTerms = (int)t.Get("min_terms").Number;
+            if (t.Get("learned_terms_per_kind").Type == DataType.Number)
+                LabelOptions.LearnedTermsPerKind = (int)t.Get("learned_terms_per_kind").Number;
+            if (t.Get("learned_weight").Type == DataType.Number) LabelOptions.LearnedWeight = t.Get("learned_weight").Number;
+            if (t.Get("propagate").Type == DataType.Boolean) LabelOptions.Propagate = t.Get("propagate").Boolean;
+            if (t.Get("propagate_share").Type == DataType.Number) LabelOptions.PropagateShare = t.Get("propagate_share").Number;
+            if (t.Get("exclude_signal_words").Type == DataType.Boolean)
+                LabelOptions.ExcludeSignalWords = t.Get("exclude_signal_words").Boolean;
+            if (t.Get("unknown_name").Type == DataType.String) LabelOptions.UnknownName = t.Get("unknown_name").String;
+
+            var kinds = t.Get("kinds");
+            if (kinds.Type == DataType.Table)
+                foreach (var pair in kinds.Table.Pairs)
+                {
+                    if (pair.Key.Type != DataType.String) continue;
+                    var terms = TableStrings(pair.Value).ToList();
+                    if (terms.Count == 0) continue;
+                    var weight = pair.Value.Type == DataType.Table ? pair.Value.Table.Get("weight") : DynValue.Nil;
+                    LabelOptions.Kinds.Add(new LabelKind
+                    {
+                        Name = pair.Key.String,
+                        Terms = terms,
+                        Weight = weight.Type == DataType.Number ? weight.Number : 1.0,
+                    });
+                }
+            LabelOptions.Kinds.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
+
+            var detect = t.Get("detect");
+            if (detect.Type == DataType.Function) _detectLabelFn = detect;
+        }
+    }
+
+    /// <summary>Gives the Lua script the last word on a detected label's kind. Returns null to keep
+    /// whatever the evidence decided.</summary>
+    public string? DetectLabelKind(LabelInfo label)
+    {
+        if (_detectLabelFn is null) return null;
+        var t = new Table(_script)
+        {
+            ["name"] = label.Display,
+            ["key"] = label.Key,
+            ["kind"] = label.Kind,
+            ["confidence"] = label.Confidence,
+            ["inherited"] = label.Inherited,
+            ["posts"] = label.PostCount,
+            ["users"] = label.UserCount,
+        };
+        var evidence = new Table(_script);
+        for (int i = 0; i < label.Evidence.Count; i++) evidence[i + 1] = label.Evidence[i];
+        t["evidence"] = evidence;
+        var related = new Table(_script);
+        for (int i = 0; i < label.Related.Count; i++) related[i + 1] = label.Related[i];
+        t["related"] = related;
+        var variants = new Table(_script);
+        for (int i = 0; i < label.Variants.Count; i++) variants[i + 1] = label.Variants[i];
+        t["variants"] = variants;
+
+        var result = _script.Call(_detectLabelFn, DynValue.NewTable(t));
+        return result.Type == DataType.String ? result.String : null;
     }
 
     /// <summary>Strict = exact hashtag match; loose = the post tag may merely start with a category tag.</summary>
@@ -155,6 +227,14 @@ public sealed class LuaFilterEngine
         for (int i = 0; i < post.Categories.Count; i++)
             cats[i + 1] = post.Categories[i];
         t["categories"] = cats;
+        var labels = new Table(_script);
+        for (int i = 0; i < post.Labels.Count; i++)
+            labels[i + 1] = post.Labels[i];
+        t["labels"] = labels;
+        var kinds = new Table(_script);
+        for (int i = 0; i < post.Kinds.Count; i++)
+            kinds[i + 1] = post.Kinds[i];
+        t["kinds"] = kinds;
         return DynValue.NewTable(t);
     }
 

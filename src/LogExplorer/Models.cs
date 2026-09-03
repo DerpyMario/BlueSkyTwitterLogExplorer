@@ -52,6 +52,13 @@ public sealed class Post
     /// <summary>Categories assigned by the Lua filter script.</summary>
     public List<string> Categories { get; set; } = new();
 
+    /// <summary>Subject names (games, shows, events, …) detected in this post, discovered from the
+    /// data rather than from any hardcoded list.</summary>
+    public List<string> Labels { get; set; } = new();
+
+    /// <summary>What kinds of thing those labels are ("Video game", "Anime", …).</summary>
+    public List<string> Kinds { get; set; } = new();
+
     public string SourceFile { get; set; } = "";
 
     public string Channel { get; set; } = "";

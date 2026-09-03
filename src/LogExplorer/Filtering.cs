@@ -9,6 +9,13 @@ public sealed class FilterOptions
     public List<string> Users = new();
     public List<string> Tags = new();
     public List<string> Categories = new();
+
+    /// <summary>Subject names to keep, matched against the auto-detected labels
+    /// ("Genshin Impact" and "genshinimpact" both work).</summary>
+    public List<string> Labels = new();
+
+    /// <summary>Kinds of subject to keep ("Video game", "Anime", …).</summary>
+    public List<string> Kinds = new();
     public DateTimeOffset? From;
     public DateTimeOffset? To;
     public TimeSpan? TimeFrom;
@@ -36,6 +43,8 @@ public static class PostFilter
         var users = o.Users.Select(u => u.TrimStart('@').ToLowerInvariant()).ToHashSet();
         var tags = o.Tags.Select(HashtagExtractor.Normalize).ToList();
         var categories = o.Categories.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var labels = o.Labels.Select(LabelEngine.NormalizeKey).Where(l => l.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var kinds = o.Kinds.Select(k => k.Trim()).Where(k => k.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var where = o.WhereLua is null ? null : lua.CompileWhere(o.WhereLua);
 
         var result = new List<Post>();
@@ -53,6 +62,8 @@ public static class PostFilter
                     .Select(HashtagExtractor.Normalize)
                     .Any(pt => tags.Any(t => lua.TagMatches(pt, t)))) continue;
             if (categories.Count > 0 && !post.Categories.Any(categories.Contains)) continue;
+            if (labels.Count > 0 && !post.Labels.Any(l => labels.Contains(LabelEngine.NormalizeKey(l)))) continue;
+            if (kinds.Count > 0 && !post.Kinds.Any(kinds.Contains)) continue;
             if (lua.RequireCategory && post.Categories.Count == 1 && post.Categories[0] == lua.UncategorizedName
                 && !categories.Contains(lua.UncategorizedName)) continue;
             if (o.Contains is { } c
@@ -93,11 +104,12 @@ public static class Exporters
                 }));
                 break;
             case "csv":
-                writer.WriteLine("timestamp,platform,handle,display_name,reposted_by,categories,hashtags,url,text");
+                writer.WriteLine("timestamp,platform,handle,display_name,reposted_by,categories,labels,kinds,hashtags,url,text");
                 foreach (var p in posts)
                     writer.WriteLine(string.Join(",",
                         Csv(p.Timestamp.ToString("o")), Csv(p.Platform.ToString()), Csv(p.Handle),
                         Csv(p.DisplayName), Csv(p.RepostedBy ?? ""), Csv(string.Join(";", p.Categories)),
+                        Csv(string.Join(";", p.Labels)), Csv(string.Join(";", p.Kinds)),
                         Csv(string.Join(";", p.Hashtags)), Csv(p.Url), Csv(p.Text)));
                 break;
             case "md":
@@ -111,6 +123,9 @@ public static class Exporters
                     if (p.QuotedHandle is not null)
                         writer.WriteLine($"\n> Quoting @{p.QuotedHandle}: {p.QuotedText}");
                     writer.WriteLine($"\nCategories: {string.Join(", ", p.Categories)}  ");
+                    if (p.Labels.Count > 0)
+                        writer.WriteLine($"Labels: {string.Join(", ", p.Labels)}"
+                                         + (p.Kinds.Count > 0 ? $" ({string.Join(", ", p.Kinds)})" : "") + "  ");
                     writer.WriteLine($"Link: <{p.Url}>\n");
                 }
                 break;

@@ -11,14 +11,17 @@ public class ArchiveTests
     [Fact]
     public void ReadsExportsInsideSevenZipWithoutExtracting()
     {
-        // sample-data contains the two loose JSONs plus sample-archive.7z holding identical
-        // copies — the .7z entries must parse and then merge with the loose files.
+        // sample-data holds loose JSON exports plus sample-archive.7z containing identical
+        // copies of two of them — the .7z entries must parse and then merge with the loose files.
         var archive = LogArchive.Load(SampleDataDir);
 
-        Assert.Equal(5, archive.Posts.Count);
-        Assert.Equal(2, archive.Files.Count);
         Assert.Equal(2, archive.MergedFileCount);
-        Assert.All(archive.Files, f => Assert.Equal(1, f.MergedCount));
+        var merged = archive.Files.Where(f => f.MergedCount > 0).ToList();
+        Assert.Equal(2, merged.Count);
+        Assert.All(merged, f => Assert.Equal(1, f.MergedCount));
+        // Nothing was double-counted: every post is unique across the loose and archived copies.
+        Assert.Equal(archive.Files.Sum(f => f.ParsedPosts), archive.Posts.Count);
+        Assert.Equal(archive.Posts.Select(p => p.DedupeKey).Distinct().Count(), archive.Posts.Count);
     }
 
     [Fact]

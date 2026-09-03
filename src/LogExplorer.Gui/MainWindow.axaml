@@ -29,6 +29,8 @@
         <ComboBoxItem Content="Bluesky" />
       </ComboBox>
       <ComboBox x:Name="CategoryBox" Width="160" SelectedIndex="0" />
+      <ComboBox x:Name="KindBox" Width="160" SelectedIndex="0" />
+      <TextBox x:Name="LabelBox" Width="170" Watermark="subject (game, show…)" />
       <TextBox x:Name="TagBox" Width="150" Watermark="#hashtags (a,b)" />
       <TextBox x:Name="UserBox" Width="170" Watermark="@users (a,b)" />
       <CalendarDatePicker x:Name="FromDate" Width="140" Watermark="from date" />
@@ -104,6 +106,29 @@
                   <TextBlock Text="{Binding Count}" Width="70" TextAlignment="Right" Margin="0,0,12,0" />
                   <TextBlock Text="{Binding Tag}" Width="300" FontWeight="SemiBold" />
                   <TextBlock Text="{Binding Categories}" Opacity="0.7" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+
+      <TabItem Header="Subjects">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Margin="4,2" Opacity="0.6"
+                     Text="Subject names found in the logs, with the kind each was worked out to be. Double-click one to filter by it. A ~ means the kind was inherited from related subjects." />
+          <ListBox x:Name="LabelsList" DoubleTapped="OnLabelDoubleTapped">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Margin="0,2">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Posts}" Width="55" TextAlignment="Right" Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding Users}" Width="55" TextAlignment="Right" Margin="0,0,10,0" Opacity="0.7" />
+                    <TextBlock Text="{Binding Kind}" Width="150" />
+                    <TextBlock Text="{Binding Name}" Width="300" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Seen}" Opacity="0.7" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding Why}" Margin="130,0,0,0" Opacity="0.6" FontSize="12" TextWrapping="Wrap" />
                 </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>

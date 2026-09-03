@@ -1,0 +1,227 @@
+{
+  "id": "1500588660737966230",
+  "serverName": "Sample Server",
+  "channelName": "general-x-twitter-posts",
+  "messageCount": 9,
+  "fromDate": "2026-07-05T00:00:00.000Z",
+  "toDate": "2026-07-09T00:00:00.000Z",
+  "messages": [
+    {
+      "type": 0,
+      "content": "https://twitter.com/astralvoyage/status/2000000000000000001",
+      "timestamp": "2026-07-05T09:00:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/astralvoyage/status/2000000000000000001",
+          "description": "Version 2.1 is live! Full patchnotes and a new gameplay trailer below. #AstralVoyage",
+          "color": 1942002,
+          "timestamp": "2026-07-05T09:00:00+00:00",
+          "author": {
+            "name": "Astral Voyage (@astralvoyage)",
+            "url": "https://twitter.com/astralvoyage/status/2000000000000000001"
+          }
+        }
+      ],
+      "id": "2000000000000000001",
+      "channel_id": "1500588660737966230",
+      "author": {
+        "username": "TweetBot",
+        "bot": true
+      }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/indie_reviews/status/2000000000000000002",
+      "timestamp": "2026-07-05T14:20:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/indie_reviews/status/2000000000000000002",
+          "description": "Spent the weekend on the #AstralVoyage beta — the gameplay loop is superb. Wishlist it.",
+          "color": 1942002,
+          "timestamp": "2026-07-05T14:20:00+00:00",
+          "author": {
+            "name": "Indie Reviews (@indie_reviews)",
+            "url": "https://twitter.com/indie_reviews/status/2000000000000000002"
+          }
+        }
+      ],
+      "id": "2000000000000000002",
+      "channel_id": "1500588660737966230",
+      "author": {
+        "username": "TweetBot",
+        "bot": true
+      }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/pixel_studio_jp/status/2000000000000000003",
+      "timestamp": "2026-07-06T11:05:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/pixel_studio_jp/status/2000000000000000003",
+          "description": "#AstralVoyage patchnotes fixed the boss fight we complained about. Great playtest response.",
+          "color": 1942002,
+          "timestamp": "2026-07-06T11:05:00+00:00",
+          "author": {
+            "name": "Pixel Studio (@pixel_studio_jp)",
+            "url": "https://twitter.com/pixel_studio_jp/status/2000000000000000003"
+          }
+        }
+      ],
+      "id": "2000000000000000003",
+      "channel_id": "1500588660737966230",
+      "author": {
+        "username": "TweetBot",
+        "bot": true
+      }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/silverbloom_anime/status/2000000000000000004",
+      "timestamp": "2026-07-06T12:00:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/silverbloom_anime/status/2000000000000000004",
+          "description": "Episode 7 of #SilverBloom streams tonight. Simulcast starts 20:00 JST. #アニメ",
+          "color": 1942002,
+          "timestamp": "2026-07-06T12:00:00+00:00",
+          "author": {
+            "name": "Silver Bloom (@silverbloom_anime)",
+            "url": "https://twitter.com/silverbloom_anime/status/2000000000000000004"
+          }
+        }
+      ],
+      "id": "2000000000000000004",
+      "channel_id": "1500588660737966230",
+      "author": {
+        "username": "TweetBot",
+        "bot": true
+      }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/sample_seiyuu/status/2000000000000000005",
+      "timestamp": "2026-07-06T18:40:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/sample_seiyuu/status/2000000000000000005",
+          "description": "So proud of the dubbed cast on #SilverBloom — episode 7 broke me. #VoiceActor",
+          "color": 1942002,
+          "timestamp": "2026-07-06T18:40:00+00:00",
+          "author": {
+            "name": "Sample Seiyuu 🎙️ (@sample_seiyuu)",
+            "url": "https://twitter.com/sample_seiyuu/status/2000000000000000005"
+          }
+        }
+      ],
+      "id": "2000000000000000005",
+      "channel_id": "1500588660737966230",
+      "author": {
+        "username": "TweetBot",
+        "bot": true
+      }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/anime_watcher/status/2000000000000000006",
+      "timestamp": "2026-07-07T08:15:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/anime_watcher/status/2000000000000000006",
+          "description": "#SilverBloom season 2 confirmed! The adaptation is finally covering my favourite arc.",
+          "color": 1942002,
+          "timestamp": "2026-07-07T08:15:00+00:00",
+          "author": {
+            "name": "Anime Watcher (@anime_watcher)",
+            "url": "https://twitter.com/anime_watcher/status/2000000000000000006"
+          }
+        }
+      ],
+      "id": "2000000000000000006",
+      "channel_id": "1500588660737966230",
+      "author": {
+        "username": "TweetBot",
+        "bot": true
+      }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/indie_reviews/status/2000000000000000007",
+      "timestamp": "2026-07-07T19:30:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/indie_reviews/status/2000000000000000007",
+          "description": "Finally reached #Roscaelifer in #AstralVoyage. No spoilers.",
+          "color": 1942002,
+          "timestamp": "2026-07-07T19:30:00+00:00",
+          "author": {
+            "name": "Indie Reviews (@indie_reviews)",
+            "url": "https://twitter.com/indie_reviews/status/2000000000000000007"
+          }
+        }
+      ],
+      "id": "2000000000000000007",
+      "channel_id": "1500588660737966230",
+      "author": {
+        "username": "TweetBot",
+        "bot": true
+      }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/pixel_studio_jp/status/2000000000000000008",
+      "timestamp": "2026-07-08T10:00:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/pixel_studio_jp/status/2000000000000000008",
+          "description": "#Roscaelifer is the best area in #AstralVoyage, full stop.",
+          "color": 1942002,
+          "timestamp": "2026-07-08T10:00:00+00:00",
+          "author": {
+            "name": "Pixel Studio (@pixel_studio_jp)",
+            "url": "https://twitter.com/pixel_studio_jp/status/2000000000000000008"
+          }
+        }
+      ],
+      "id": "2000000000000000008",
+      "channel_id": "1500588660737966230",
+      "author": {
+        "username": "TweetBot",
+        "bot": true
+      }
+    },
+    {
+      "type": 0,
+      "content": "https://twitter.com/sample_seiyuu/status/2000000000000000009",
+      "timestamp": "2026-07-08T21:10:00.000000+00:00",
+      "embeds": [
+        {
+          "type": "rich",
+          "url": "https://twitter.com/sample_seiyuu/status/2000000000000000009",
+          "description": "Streaming more #AstralVoyage tonight, heading back to #Roscaelifer.",
+          "color": 1942002,
+          "timestamp": "2026-07-08T21:10:00+00:00",
+          "author": {
+            "name": "Sample Seiyuu 🎙️ (@sample_seiyuu)",
+            "url": "https://twitter.com/sample_seiyuu/status/2000000000000000009"
+          }
+        }
+      ],
+      "id": "2000000000000000009",
+      "channel_id": "1500588660737966230",
+      "author": {
+        "username": "TweetBot",
+        "bot": true
+      }
+    }
+  ],
+  "tokenEstimate": 900
+}
