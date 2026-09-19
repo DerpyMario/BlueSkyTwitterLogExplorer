@@ -150,6 +150,107 @@
         </ListBox>
       </TabItem>
 
+      <TabItem Header="Tuning">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Margin="4,2,4,6" Opacity="0.7" TextWrapping="Wrap"
+                     Text="How subjects are detected and how their kind is decided. Change anything here and press Apply — no file editing needed. Saving writes label-tuning.json next to filters.lua, which the command line reads too; Revert deletes it and hands control back to the script." />
+
+          <DockPanel DockPanel.Dock="Bottom" Margin="4,8,4,0">
+            <StackPanel Orientation="Horizontal" Spacing="6" DockPanel.Dock="Left">
+              <Button x:Name="ApplyTuningButton" Content="Apply and re-detect" Click="OnApplyTuning" />
+              <Button Content="Save as default" Click="OnSaveTuning" />
+              <Button Content="Revert to filters.lua" Click="OnRevertTuning" />
+            </StackPanel>
+            <TextBlock x:Name="TuningStatus" VerticalAlignment="Center" Margin="12,0,0,0" Opacity="0.75" TextWrapping="Wrap" />
+          </DockPanel>
+
+          <Grid ColumnDefinitions="360,*" Margin="4">
+            <ScrollViewer Grid.Column="0">
+              <StackPanel Spacing="6" Margin="0,0,16,0">
+                <TextBlock Text="Thresholds" FontWeight="SemiBold" />
+
+                <StackPanel ToolTip.Tip="How many posts a hashtag must appear in before it counts as a subject at all.">
+                  <TextBlock Text="Minimum posts per subject" />
+                  <NumericUpDown x:Name="MinPostsBox" Minimum="1" Maximum="500" Increment="1" FormatString="0" />
+                </StackPanel>
+
+                <StackPanel ToolTip.Tip="Share of a subject's posts that must contain some kind's vocabulary before any kind is assigned.">
+                  <TextBlock Text="Minimum evidence share" />
+                  <NumericUpDown x:Name="MinConfidenceBox" Minimum="0" Maximum="1" Increment="0.01" FormatString="0.00" />
+                </StackPanel>
+
+                <StackPanel ToolTip.Tip="How far ahead of the runner-up the winning kind must be. Higher means more subjects are left for co-occurrence to decide instead of being guessed at.">
+                  <TextBlock Text="Winning margin over runner-up" />
+                  <NumericUpDown x:Name="MinMarginBox" Minimum="1" Maximum="10" Increment="0.1" FormatString="0.0" />
+                </StackPanel>
+
+                <StackPanel ToolTip.Tip="How many different vocabulary words must back a decision. 1 lets a single ambiguous word like 'trailer' settle a kind.">
+                  <TextBlock Text="Different words needed" />
+                  <NumericUpDown x:Name="MinTermsBox" Minimum="1" Maximum="10" Increment="1" FormatString="0" />
+                </StackPanel>
+
+                <StackPanel ToolTip.Tip="Extra trust in posts written by the subject's own account, e.g. @GenshinImpact posting about #GenshinImpact.">
+                  <TextBlock Text="Trust in the subject's own account" />
+                  <NumericUpDown x:Name="AuthorWeightBox" Minimum="1" Maximum="50" Increment="0.5" FormatString="0.0" />
+                </StackPanel>
+
+                <TextBlock Text="Learning" FontWeight="SemiBold" Margin="0,8,0,0" />
+
+                <StackPanel ToolTip.Tip="How many extra words the explorer may teach itself per kind by reading the posts of subjects it already placed. 0 turns learning off and sticks to the word lists.">
+                  <TextBlock Text="Words learned per kind" />
+                  <NumericUpDown x:Name="LearnedTermsBox" Minimum="0" Maximum="400" Increment="5" FormatString="0" />
+                </StackPanel>
+
+                <StackPanel ToolTip.Tip="How much a learned word counts next to a hand-written one.">
+                  <TextBlock Text="Weight of a learned word" />
+                  <NumericUpDown x:Name="LearnedWeightBox" Minimum="0" Maximum="2" Increment="0.05" FormatString="0.00" />
+                </StackPanel>
+
+                <TextBlock Text="Leftovers" FontWeight="SemiBold" Margin="0,8,0,0" />
+
+                <CheckBox x:Name="PropagateCheck" Content="Subjects with no vocabulary inherit from related ones"
+                          ToolTip.Tip="A subject that never carries telling words takes the kind of the subjects it keeps appearing beside." />
+
+                <StackPanel ToolTip.Tip="How much of the co-occurrence must agree on one kind before it is inherited.">
+                  <TextBlock Text="Agreement needed to inherit" />
+                  <NumericUpDown x:Name="PropagateShareBox" Minimum="0" Maximum="1" Increment="0.05" FormatString="0.00" />
+                </StackPanel>
+
+                <CheckBox x:Name="ExcludeVocabCheck" Content="Vocabulary hashtags are topics, not subjects"
+                          ToolTip.Tip="With this on, a hashtag that is itself one of the words below (#anime, #gamedev) never becomes a subject name." />
+
+                <StackPanel ToolTip.Tip="What to call subjects whose kind could not be worked out.">
+                  <TextBlock Text="Name for undecided subjects" />
+                  <TextBox x:Name="UnknownNameBox" />
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+
+            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+              <TextBlock Grid.Row="0" Text="Kinds and their vocabulary" FontWeight="SemiBold" Margin="0,0,0,6" />
+              <Grid Grid.Row="1" ColumnDefinitions="220,*">
+                <DockPanel Grid.Column="0" Margin="0,0,8,0">
+                  <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+                    <Button Content="Add kind" Click="OnAddKind" />
+                    <Button Content="Remove" Click="OnRemoveKind" />
+                  </StackPanel>
+                  <ListBox x:Name="KindsList" SelectionChanged="OnKindSelected" />
+                </DockPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Text="Name" />
+                  <TextBox x:Name="KindNameBox" />
+                  <TextBlock Text="Weight" ToolTip.Tip="How much this kind's vocabulary counts. Kinds describing an occasion around a subject — a convention, a piece of fanart — work better below 1, because that vocabulary surrounds everything." />
+                  <NumericUpDown x:Name="KindWeightBox" Minimum="0" Maximum="5" Increment="0.05" FormatString="0.00" />
+                  <TextBlock Text="Vocabulary — one word or phrase per line. Words that honestly belong to several kinds should be listed under each of them, so they cancel out." TextWrapping="Wrap" Opacity="0.7" />
+                  <TextBox x:Name="KindTermsBox" AcceptsReturn="True" TextWrapping="NoWrap" Height="330"
+                           VerticalContentAlignment="Top" FontFamily="monospace" />
+                </StackPanel>
+              </Grid>
+            </Grid>
+          </Grid>
+        </DockPanel>
+      </TabItem>
+
       <TabItem Header="Files">
         <ListBox x:Name="FilesList">
           <ListBox.ItemTemplate>

@@ -48,6 +48,11 @@ predicates to every tab:
 * **Tags** — hashtag frequencies and their categories; double-click to filter by a tag.
 * **Subjects** — every detected subject with its kind and the evidence behind it;
   double-click to filter by it. The *kind* dropdown and *subject* box filter every tab.
+* **Tuning** — every subject-detection dial as a control: the thresholds, how much the
+  subject's own account is trusted, how many words the explorer may teach itself, and the
+  kinds themselves with their weight and vocabulary. **Apply and re-detect** re-runs
+  detection on the loaded posts, **Save as default** writes the settings for next time
+  (the command line reads them too), **Revert to filters.lua** throws them away.
 * **Categories** — the Lua categories with post/user counts and top users.
 * **Files** — every export file (including ones inside archives) with format, date range
   and merge/duplicate info.
@@ -151,8 +156,24 @@ appears in next month's export is picked up without anyone editing a list.
               seen with: Sandrone, Columbina, 原神, Genshin Luna VIII, 원신
 ```
 
-Every knob is in `filters.lua` — add or rename kinds, edit their vocabulary, change the
-thresholds, or take the final decision yourself in a `detect(label)` function.
+### Tuning it without editing a file
+
+![tuning](docs/screenshot-tuning.png)
+
+The **Tuning** tab in the GUI exposes every dial described above — thresholds, the trust
+placed in a subject's own account, how many words may be learned per kind, and the kinds
+themselves with their weight and word lists (add a kind, rename one, delete one, edit its
+vocabulary). *Apply and re-detect* re-runs detection over the posts already loaded, so the
+effect of a change is visible in a few seconds without reloading the archives.
+
+*Save as default* writes `label-tuning.json` next to `filters.lua`. Those settings then take
+precedence over the script for **both** the GUI and the command line, so the two always agree
+on how subjects were detected; the CLI prints `— tuning: label-tuning.json` when it is in use.
+*Revert to filters.lua* deletes the file and hands control back to the script.
+
+`filters.lua` remains the place for anything the GUI does not cover — the categories, the
+date/time defaults, and the `detect(label)` hook that can take the final decision on a
+subject's kind in code.
 
 ## The Lua side (`scripts/filters.lua`)
 

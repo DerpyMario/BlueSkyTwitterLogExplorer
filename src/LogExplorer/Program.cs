@@ -47,6 +47,8 @@ public static class Cli
         Console.Error.WriteLine($"loading exports from {dataDir} ...");
         var archive = LogArchive.Load(dataDir);
         var lua = new LuaFilterEngine(filtersPath);
+        // Settings saved from the GUI override the script's, so both front ends agree.
+        var tuningFile = LabelTuning.ApplySaved(filtersPath, lua.LabelOptions);
         foreach (var post in archive.Posts)
             lua.AssignCategories(post);
         var labels = LabelEngine.Build(archive.Posts, lua);
@@ -55,7 +57,8 @@ public static class Cli
             $"({archive.Posts.Count(p => p.Platform == Platform.Twitter)} twitter, " +
             $"{archive.Posts.Count(p => p.Platform == Platform.Bluesky)} bluesky) — " +
             $"filters: {Path.GetFileName(filtersPath)} (strict={lua.Strict}) — " +
-            $"detected {labels.Labels.Count} labels across {labels.KindNames.Count} kinds");
+            $"detected {labels.Labels.Count} labels across {labels.KindNames.Count} kinds" +
+            (tuningFile is null ? "" : $" — tuning: {Path.GetFileName(tuningFile)}"));
 
         return Dispatch(command, opts, archive, lua, labels);
     }

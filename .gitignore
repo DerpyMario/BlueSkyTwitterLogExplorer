@@ -12,3 +12,7 @@ data/
 export.json
 export.csv
 export.md
+
+# Detection settings saved from the GUI (per-machine, not part of the project)
+scripts/label-tuning.json
+label-tuning.json

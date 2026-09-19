@@ -20,6 +20,9 @@ public partial class MainWindow : Window
     private LogArchive? _archive;
     private LuaFilterEngine? _lua;
     private LabelEngine? _labels;
+    private string? _filtersPath;
+    private List<KindTuning> _kinds = new();
+    private KindTuning? _editingKind;
     private List<Post> _filtered = new();
     private bool _busy;
 
@@ -65,11 +68,12 @@ public partial class MainWindow : Window
         LoadInfo.Text = "loading…";
         try
         {
-            var filtersPath = FindFiltersScript();
+            var filtersPath = _filtersPath = FindFiltersScript();
             var (archive, lua, labels) = await Task.Run(() =>
             {
                 var a = LogArchive.Load(dir);
                 var l = new LuaFilterEngine(filtersPath);
+                LabelTuning.ApplySaved(filtersPath, l.LabelOptions);
                 foreach (var post in a.Posts)
                     l.AssignCategories(post);
                 var detected = LabelEngine.Build(a.Posts, l);
@@ -99,6 +103,10 @@ public partial class MainWindow : Window
             CategoryBox.SelectedIndex = 0;
 
             PopulateFilesTab(archive);
+            ShowTuning(LabelTuning.CaptureFrom(lua.LabelOptions));
+            TuningStatus.Text = File.Exists(TuningPath)
+                ? $"using saved settings from {Path.GetFileName(TuningPath)}"
+                : "using the settings from filters.lua";
             ApplyFilters();
         }
         catch (Exception ex)
@@ -352,7 +360,201 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---- tuning -------------------------------------------------------------
+
+    private string TuningPath => LabelTuning.PathFor(_filtersPath ?? "scripts/filters.lua");
+
+    /// <summary>Loads a set of settings into the controls.</summary>
+    private void ShowTuning(LabelTuning tuning)
+    {
+        MinPostsBox.Value = tuning.MinPosts;
+        MinConfidenceBox.Value = (decimal)tuning.MinConfidence;
+        MinMarginBox.Value = (decimal)tuning.MinMargin;
+        MinTermsBox.Value = tuning.MinTerms;
+        AuthorWeightBox.Value = (decimal)tuning.AuthorWeight;
+        LearnedTermsBox.Value = tuning.LearnedTermsPerKind;
+        LearnedWeightBox.Value = (decimal)tuning.LearnedWeight;
+        PropagateCheck.IsChecked = tuning.Propagate;
+        PropagateShareBox.Value = (decimal)tuning.PropagateShare;
+        ExcludeVocabCheck.IsChecked = tuning.ExcludeSignalWords;
+        UnknownNameBox.Text = tuning.UnknownName;
+
+        _kinds = tuning.Kinds.Select(k => new KindTuning
+        {
+            Name = k.Name,
+            Weight = k.Weight,
+            Terms = k.Terms.ToList(),
+        }).ToList();
+        _editingKind = null;
+        RefreshKindsList(_kinds.FirstOrDefault()?.Name);
+    }
+
+    private void RefreshKindsList(string? select)
+    {
+        KindsList.ItemsSource = _kinds.Select(k => k.Name).ToList();
+        KindsList.SelectedIndex = select is null ? -1 : _kinds.FindIndex(k => k.Name == select);
+        if (KindsList.SelectedIndex < 0 && _kinds.Count > 0) KindsList.SelectedIndex = 0;
+    }
+
+    /// <summary>Reads the controls back into a set of settings, keeping whatever is on screen.</summary>
+    private LabelTuning CollectTuning()
+    {
+        FlushKindEdits();
+        return new LabelTuning
+        {
+            MinPosts = (int)(MinPostsBox.Value ?? 3),
+            MinConfidence = (double)(MinConfidenceBox.Value ?? 0.05m),
+            MinMargin = (double)(MinMarginBox.Value ?? 1.3m),
+            MinTerms = (int)(MinTermsBox.Value ?? 2),
+            AuthorWeight = (double)(AuthorWeightBox.Value ?? 6m),
+            LearnedTermsPerKind = (int)(LearnedTermsBox.Value ?? 40),
+            LearnedWeight = (double)(LearnedWeightBox.Value ?? 0.5m),
+            Propagate = PropagateCheck.IsChecked == true,
+            PropagateShare = (double)(PropagateShareBox.Value ?? 0.4m),
+            ExcludeSignalWords = ExcludeVocabCheck.IsChecked == true,
+            UnknownName = string.IsNullOrWhiteSpace(UnknownNameBox.Text) ? "Unclassified" : UnknownNameBox.Text.Trim(),
+            Kinds = _kinds.Select(k => new KindTuning { Name = k.Name, Weight = k.Weight, Terms = k.Terms.ToList() }).ToList(),
+        };
+    }
+
+    /// <summary>Moves what is in the kind editor back into the kind being edited.</summary>
+    private void FlushKindEdits()
+    {
+        if (_editingKind is null) return;
+        var name = KindNameBox.Text?.Trim();
+        if (!string.IsNullOrEmpty(name)) _editingKind.Name = name;
+        _editingKind.Weight = (double)(KindWeightBox.Value ?? 1m);
+        _editingKind.Terms = (KindTermsBox.Text ?? "")
+            .Split('\n').Select(t => t.Trim()).Where(t => t.Length > 0).ToList();
+    }
+
+    private void OnKindSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        FlushKindEdits();
+        var index = KindsList.SelectedIndex;
+        if (index < 0 || index >= _kinds.Count)
+        {
+            _editingKind = null;
+            KindNameBox.Text = "";
+            KindTermsBox.Text = "";
+            return;
+        }
+        var kind = _kinds[index];
+        _editingKind = null; // don't write the outgoing kind's fields into the incoming one
+        KindNameBox.Text = kind.Name;
+        KindWeightBox.Value = (decimal)kind.Weight;
+        KindTermsBox.Text = string.Join("\n", kind.Terms);
+        _editingKind = kind;
+    }
+
+    private void OnAddKind(object? sender, RoutedEventArgs e)
+    {
+        FlushKindEdits();
+        var name = "New kind";
+        for (var n = 2; _kinds.Any(k => k.Name.Equals(name, StringComparison.OrdinalIgnoreCase)); n++)
+            name = $"New kind {n}";
+        _kinds.Add(new KindTuning { Name = name, Weight = 1.0, Terms = new List<string>() });
+        RefreshKindsList(name);
+        KindNameBox.Focus();
+    }
+
+    private void OnRemoveKind(object? sender, RoutedEventArgs e)
+    {
+        var index = KindsList.SelectedIndex;
+        if (index < 0 || index >= _kinds.Count) return;
+        _editingKind = null;
+        _kinds.RemoveAt(index);
+        RefreshKindsList(null);
+        TuningStatus.Text = "kind removed — press Apply to re-detect";
+    }
+
+    private void OnApplyTuning(object? sender, RoutedEventArgs e) => _ = ReDetectAsync(CollectTuning(), save: false);
+
+    private void OnSaveTuning(object? sender, RoutedEventArgs e)
+    {
+        var tuning = CollectTuning();
+        try
+        {
+            tuning.Save(TuningPath);
+        }
+        catch (Exception ex)
+        {
+            TuningStatus.Text = $"could not save: {ex.Message}";
+            return;
+        }
+        _ = ReDetectAsync(tuning, save: true);
+    }
+
+    private async void OnRevertTuning(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (File.Exists(TuningPath)) File.Delete(TuningPath);
+        }
+        catch (Exception ex)
+        {
+            TuningStatus.Text = $"could not remove the saved settings: {ex.Message}";
+            return;
+        }
+        if (_filtersPath is null || _lua is null) return;
+
+        // Re-read the script so the controls show exactly what it says.
+        var fresh = new LuaFilterEngine(_filtersPath);
+        var tuning = LabelTuning.CaptureFrom(fresh.LabelOptions);
+        ShowTuning(tuning);
+        await ReDetectAsync(tuning, save: false);
+        TuningStatus.Text = "back to the settings in filters.lua";
+    }
+
+    private async Task ReDetectAsync(LabelTuning tuning, bool save)
+    {
+        if (_archive is null || _lua is null || _busy) return;
+        if (tuning.Kinds.Count(k => k.Terms.Count > 0) == 0)
+        {
+            TuningStatus.Text = "add at least one kind with some vocabulary first";
+            return;
+        }
+
+        _busy = true;
+        ApplyTuningButton.IsEnabled = LoadButton.IsEnabled = ApplyButton.IsEnabled = false;
+        TuningStatus.Text = "re-detecting subjects…";
+        try
+        {
+            var lua = _lua;
+            var posts = _archive.Posts;
+            var labels = await Task.Run(() =>
+            {
+                tuning.ApplyTo(lua.LabelOptions);
+                return LabelEngine.Build(posts, lua);
+            });
+            _labels = labels;
+
+            var selected = KindBox.SelectedItem as string;
+            KindBox.ItemsSource = new[] { "All kinds" }
+                .Concat(labels.Labels.Select(l => l.Kind).Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+            KindBox.SelectedIndex = Math.Max(0, ((List<string>)KindBox.ItemsSource!).IndexOf(selected ?? "All kinds"));
+
+            ApplyFilters();
+            var classified = labels.Labels.Count(l => l.Kind != labels.Options.UnknownName);
+            TuningStatus.Text =
+                $"{labels.Labels.Count} subjects, {classified} classified into {labels.KindNames.Count} kinds" +
+                (save ? $" — saved to {Path.GetFileName(TuningPath)}" : " — not saved yet");
+        }
+        catch (Exception ex)
+        {
+            TuningStatus.Text = $"error: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+            ApplyTuningButton.IsEnabled = LoadButton.IsEnabled = ApplyButton.IsEnabled = true;
+        }
+    }
+
     // ---- export -------------------------------------------------------------
+
 
     private void OnExportJson(object? sender, RoutedEventArgs e) => _ = ExportAsync("json");
     private void OnExportCsv(object? sender, RoutedEventArgs e) => _ = ExportAsync("csv");
